@@ -1,2 +1,7 @@
 module TestProgram;
+    procedure TestProc1;
+    end;
+
+    procedure TestProc2;
+    end;
 end.

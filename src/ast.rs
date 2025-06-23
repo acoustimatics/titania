@@ -69,6 +69,9 @@ pub mod wat {
     pub struct Module {
         /// The module's name.
         pub name: String,
+
+        /// The module's functions.
+        pub funcs: Vec<Func>,
     }
 
     /// A WAT function.
