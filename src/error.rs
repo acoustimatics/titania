@@ -12,6 +12,9 @@ pub enum ErrorTag {
     /// Expected a token tag, but got a different token tag.
     ExpectedToken { expected: TokenTag, got: TokenTag },
 
+    /// A name previously defined was used in a definition.
+    NameRedefinition(String),
+
     /// An unexpected character was encountered.
     UnexpectedCharacter(char),
 
@@ -21,19 +24,23 @@ pub enum ErrorTag {
 
 impl fmt::Display for ErrorTag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let desc = match self {
-            ErrorTag::ExpectedIdentifier { got } => {
-                return write!(f, "expected an identifier but got `{got}`");
+        use ErrorTag::*;
+
+        match self {
+            ExpectedIdentifier { got } => {
+                write!(f, "expected an identifier but got `{got}`")
             }
-            ErrorTag::ExpectedToken { expected, got } => {
-                return write!(f, "expected `{expected}` but got `{got}`");
+            ExpectedToken { expected, got } => {
+                write!(f, "expected `{expected}` but got `{got}`")
             }
-            ErrorTag::UnexpectedCharacter(c) => {
-                return write!(f, "unexpected character `{c}`");
+            NameRedefinition(name) => {
+                write!(f, "name `{name}` was previously defined")
             }
-            ErrorTag::UnterminatedComment => "unterminated comment",
-        };
-        write!(f, "{desc}")
+            UnexpectedCharacter(c) => {
+                write!(f, "unexpected character `{c}`")
+            }
+            UnterminatedComment => write!(f, "unterminated comment"),
+        }
     }
 }
 
@@ -51,6 +58,13 @@ impl Error {
     /// Constructs a new `Error` value.
     pub fn new(tag: ErrorTag, line: usize) -> Self {
         Self { tag, line }
+    }
+
+    pub fn name_redefinition<T>(name: &str, line: usize) -> Result<T, Self> {
+        let name = name.to_owned();
+        let tag = ErrorTag::NameRedefinition(name);
+        let error = Self { tag, line };
+        Err(error)
     }
 }
 

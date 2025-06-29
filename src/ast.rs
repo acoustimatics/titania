@@ -9,17 +9,24 @@ pub mod src {
         pub name: String,
 
         /// The module's declaration list.
-        pub declarations: Vec<Declaration>,
+        pub decls: Vec<Decl>,
     }
 
     /// All possible declarations.
     #[derive(Debug)]
-    pub enum Declaration {
+    pub enum Decl {
         /// A procedure declaration.
-        Procedure {
-            /// The procedure's name.
-            name: String,
-        },
+        Proc(DeclProc),
+    }
+
+    /// A procedure declaration.
+    #[derive(Debug)]
+    pub struct DeclProc {
+        /// The procedure's name.
+        pub name: String,
+
+        /// The line the procedure is defined on.
+        pub line: usize,
     }
 
     pub mod builder {
@@ -27,36 +34,64 @@ pub mod src {
 
         use super::*;
 
-        pub struct ModuleBuilder {
+        pub struct BuilderModule {
             pub name: String,
-            pub declarations: Vec<Declaration>,
+            pub decls: Vec<Decl>,
         }
 
-        impl ModuleBuilder {
+        impl BuilderModule {
             pub fn new() -> Self {
                 Self {
                     name: String::new(),
-                    declarations: Vec::new(),
+                    decls: Vec::new(),
                 }
             }
 
-            pub fn set_name(&mut self, name: String) -> &mut Self {
-                self.name = name;
+            pub fn set_name(&mut self, name: &str) -> &mut Self {
+                self.name = name.to_owned();
                 self
             }
 
-            pub fn add_declaration(&mut self, declaration: Declaration) -> &mut Self {
-                self.declarations.push(declaration);
+            pub fn add_decl(&mut self, decl: Decl) -> &mut Self {
+                self.decls.push(decl);
                 self
             }
 
             pub fn build(&mut self) -> Module {
                 let name = mem::replace(&mut self.name, String::new());
-                let declarations = mem::replace(&mut self.declarations, Vec::new());
-                Module {
-                    name,
-                    declarations,
+                let decls = mem::replace(&mut self.decls, Vec::new());
+                Module { name, decls }
+            }
+        }
+
+        pub struct BuilderDeclProc {
+            pub name: String,
+            pub line: usize,
+        }
+
+        impl BuilderDeclProc {
+            pub fn new() -> Self {
+                Self {
+                    name: String::new(),
+                    line: 0,
                 }
+            }
+
+            pub fn set_name(&mut self, name: &str, line: usize) -> &mut Self {
+                self.name = name.to_owned();
+                self.line = line;
+                self
+            }
+
+            pub fn build(&mut self) -> DeclProc {
+                let name = mem::replace(&mut self.name, String::new());
+                let line = mem::replace(&mut self.line, 0);
+                DeclProc { name, line }
+            }
+
+            pub fn build_decl(&mut self) -> Decl {
+                let decl_proc = self.build();
+                Decl::Proc(decl_proc)
             }
         }
     }

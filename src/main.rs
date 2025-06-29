@@ -4,6 +4,8 @@ mod emission;
 mod error;
 mod parser;
 mod scanner;
+mod table;
+mod types;
 
 use std::env;
 use std::fs;
@@ -38,7 +40,7 @@ fn compile_file(path: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("{:?}", module);
 
     println!("\n# COMPILED");
-    let module = compile(&module);
+    let module = compile(&module)?;
     println!("{:?}", module);
 
     println!("\n# EMISSION");

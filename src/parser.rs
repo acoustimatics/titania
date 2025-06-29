@@ -5,6 +5,9 @@ use crate::ast::src::*;
 use crate::error::*;
 use crate::scanner::*;
 
+// Result type for parsing functions.
+pub type ParseResult<T> = Result<T, Error>;
+
 /// Holds the state of a parser.
 pub struct Parser<'a> {
     /// A source text scanner.
@@ -24,21 +27,21 @@ impl<'a> Parser<'a> {
 
     /// Parses a module.
     pub fn module(&mut self) -> ParseResult<Module> {
-        let mut module_builder = ModuleBuilder::new();
+        let mut module_builder = BuilderModule::new();
 
         // "module"
         self.expect(TokenTag::Module)?;
 
         // Identifier
-        let name = self.expect_identifier()?;
-        module_builder.set_name(name);
+        let (name, _) = self.expect_identifier()?;
+        module_builder.set_name(&name);
 
         // ";"
         self.expect(TokenTag::Semicolon)?;
 
         // { Declaration }
         while let Some(declaration) = self.declaration()? {
-            module_builder.add_declaration(declaration);
+            module_builder.add_decl(declaration);
         }
 
         // "end"
@@ -54,7 +57,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a declaration.
-    pub fn declaration(&mut self) -> ParseResult<Option<Declaration>> {
+    pub fn declaration(&mut self) -> ParseResult<Option<Decl>> {
         let declaration = if self.is_match(TokenTag::Procedure)? {
             // Procedure
             let procedure = self.procedure()?;
@@ -71,11 +74,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a procedure.
-    pub fn procedure(&mut self) -> ParseResult<Declaration> {
+    pub fn procedure(&mut self) -> ParseResult<Decl> {
         // "procedure" was previous token.
 
         // Identifier
-        let name = self.expect_identifier()?;
+        let (name, line) = self.expect_identifier()?;
 
         // ";"
         self.expect(TokenTag::Semicolon)?;
@@ -83,7 +86,9 @@ impl<'a> Parser<'a> {
         // "end"
         self.expect(TokenTag::End)?;
 
-        Ok(Declaration::Procedure { name })
+        let decl_proc = DeclProc { name, line };
+
+        Ok(Decl::Proc(decl_proc))
     }
 
     /// Make sure the current token has the given tag, or else generate an error.
@@ -99,14 +104,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// If the current token is an identifier, return the identifier name
-    /// Otherwise, return an error.
-    fn expect_identifier(&mut self) -> ParseResult<String> {
+    /// If the current token is an identifier, return the identifier name and
+    /// line number. Otherwise, return an error.
+    fn expect_identifier(&mut self) -> ParseResult<(String, usize)> {
         match &self.current {
-            Token { tag: TokenTag::Identifier(name), .. } => {
+            Token {
+                tag: TokenTag::Identifier(name),
+                line,
+            } => {
                 let name = name.clone();
+                let line = *line;
                 self.advance()?;
-                Ok(name)
+                Ok((name, line))
             }
             _ => self.err_current(ErrorTag::ExpectedIdentifier {
                 got: self.current.tag.clone(),
@@ -137,9 +146,6 @@ impl<'a> Parser<'a> {
     }
 }
 
-// Result type for parsing functions.
-pub type ParseResult<T> = Result<T, Error>;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,7 +163,7 @@ mod tests {
     fn test_module_procedure() -> ParseResult<()> {
         let mut parser = Parser::new("module M; procedure P; end; end.")?;
         let module = parser.module()?;
-        assert_eq!(module.declarations.len(), 1);
+        assert_eq!(module.decls.len(), 1);
         assert!(is_at_eof(&parser));
         Ok(())
     }
@@ -166,8 +172,8 @@ mod tests {
     fn test_declaration_empty_procedure() -> ParseResult<()> {
         let mut parser = Parser::new("procedure P; end;")?;
         match parser.declaration()? {
-            Some(Declaration::Procedure { name }) => {
-                assert_eq!(name, "P");
+            Some(Decl::Proc(decl_proc)) => {
+                assert_eq!(decl_proc.name, "P");
             }
             decl => panic!("Expected a procedure but got {decl:?}"),
         }
