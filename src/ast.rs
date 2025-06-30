@@ -27,6 +27,9 @@ pub mod src {
 
         /// The line the procedure is defined on.
         pub line: usize,
+
+        /// Whether the procedure is exported.
+        pub export: bool,
     }
 
     pub mod builder {
@@ -67,6 +70,7 @@ pub mod src {
         pub struct BuilderDeclProc {
             pub name: String,
             pub line: usize,
+            pub export: bool,
         }
 
         impl BuilderDeclProc {
@@ -74,6 +78,7 @@ pub mod src {
                 Self {
                     name: String::new(),
                     line: 0,
+                    export: false,
                 }
             }
 
@@ -83,10 +88,16 @@ pub mod src {
                 self
             }
 
+            pub fn set_export(&mut self, export: bool) -> &mut Self {
+                self.export = export;
+                self
+            }
+
             pub fn build(&mut self) -> DeclProc {
                 let name = mem::replace(&mut self.name, String::new());
                 let line = mem::replace(&mut self.line, 0);
-                DeclProc { name, line }
+                let export = mem::replace(&mut self.export, false);
+                DeclProc { name, line, export }
             }
 
             pub fn build_decl(&mut self) -> Decl {
@@ -107,12 +118,22 @@ pub mod wat {
 
         /// The module's functions.
         pub funcs: Vec<Func>,
+
+        /// The module's exports.
+        pub exports: Vec<Export>,
     }
 
     /// A WAT function.
     #[derive(Debug)]
     pub struct Func {
         /// The function's name.
+        pub name: String,
+    }
+
+    /// Represents an export S-expression.
+    #[derive(Debug)]
+    pub struct Export {
+        /// The export's name.
         pub name: String,
     }
 }

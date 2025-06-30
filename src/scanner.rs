@@ -26,8 +26,11 @@ pub enum TokenTag {
     /// The `procedure` keyword.
     Procedure,
 
-    // A `;`.
+    /// A `;`.
     Semicolon,
+
+    /// A '*'.
+    Star,
 }
 
 impl fmt::Display for TokenTag {
@@ -44,6 +47,7 @@ impl fmt::Display for TokenTag {
             Module => "module",
             Procedure => "procedure",
             Semicolon => ";",
+            Star => "*",
         };
 
         write!(f, "{token_str}")
@@ -175,6 +179,7 @@ impl<'a> Scanner<'a> {
             None => Eof,
             Some('.') => Dot,
             Some(';') => Semicolon,
+            Some('*') => Star,
             Some(c) => return Err(Error::new(ErrorTag::UnexpectedCharacter(c), self.line)),
         };
 
@@ -270,9 +275,11 @@ mod tests {
     fn test_next_token_symbol() -> Result<(), Error> {
         use TokenTag::*;
 
-        let mut scanner = Scanner::new("; . -");
-        assert_eq!(next_tag(&mut scanner)?, Semicolon);
+        let mut scanner = Scanner::new(". ; *");
         assert_eq!(next_tag(&mut scanner)?, Dot);
+        assert_eq!(next_tag(&mut scanner)?, Semicolon);
+        assert_eq!(next_tag(&mut scanner)?, Star);
+        assert_eq!(next_tag(&mut scanner)?, Eof);
         Ok(())
     }
 }

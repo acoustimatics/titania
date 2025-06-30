@@ -14,16 +14,27 @@ pub fn compile(module: &src::Module) -> ResultCompile<wat::Module> {
 
     let name = module.name.clone();
     let mut funcs = Vec::new();
+    let mut exports = Vec::new();
 
     for decl in module.decls.iter() {
-        let func = compile_decl(&mut table_proc, &decl)?;
+        let (func, export) = compile_decl(&mut table_proc, &decl)?;
+        if let Some(export) = export {
+            exports.push(export);
+        }
         funcs.push(func);
     }
 
-    Ok(wat::Module { name, funcs })
+    Ok(wat::Module {
+        name,
+        funcs,
+        exports,
+    })
 }
 
-fn compile_decl(table_proc: &mut Table<TypeProc>, decl: &src::Decl) -> ResultCompile<wat::Func> {
+fn compile_decl(
+    table_proc: &mut Table<TypeProc>,
+    decl: &src::Decl
+) -> ResultCompile<(wat::Func, Option<wat::Export>)> {
     match decl {
         src::Decl::Proc(decl_proc) => compile_proc(table_proc, decl_proc),
     }
@@ -32,19 +43,24 @@ fn compile_decl(table_proc: &mut Table<TypeProc>, decl: &src::Decl) -> ResultCom
 fn compile_proc(
     table_proc: &mut Table<TypeProc>,
     decl_proc: &src::DeclProc,
-) -> ResultCompile<wat::Func> {
-    let src::DeclProc { name, line } = &decl_proc;
-
-    // Make sure the proce name isn't being re-defined.
-    if let Some(_) = table_proc.lookup(name) {
-        return Error::name_redefinition(name, *line);
+) -> ResultCompile<(wat::Func, Option<wat::Export>)> {
+    // Make sure the proc name isn't being re-defined.
+    if let Some(_) = table_proc.lookup(&decl_proc.name) {
+        return Error::name_redefinition(&decl_proc.name, decl_proc.line);
     }
 
     // Create an entry in the proc table.
     let t_proc = TypeProc::new(None);
-    table_proc.push(name, t_proc);
+    table_proc.push(&decl_proc.name, t_proc);
 
-    Ok(wat::Func { name: name.clone() })
+    let func = wat::Func { name: decl_proc.name.clone() };
+    let export = if decl_proc.export {
+        Some(wat::Export { name: decl_proc.name.clone() })
+    } else {
+        None
+    };
+
+    Ok((func, export))
 }
 
 #[cfg(test)]
@@ -80,6 +96,22 @@ mod tests {
     }
 
     #[test]
+    fn test_module_proc_export() -> ResultTest {
+        let module = BuilderModule::new()
+            .set_name("M")
+            .add_decl(
+                BuilderDeclProc::new()
+                    .set_name("P", 1)
+                    .set_export(true)
+                    .build_decl(),
+            )
+            .build();
+        let module = compile(&module)?;
+        assert_eq!(module.exports[0].name, "P");
+        Ok(())
+    }
+
+    #[test]
     fn test_compile_module_proc_name_redefinition() -> ResultTest {
         let mut builder_decl_proc = BuilderDeclProc::new();
         let module = BuilderModule::new()
@@ -103,7 +135,7 @@ mod tests {
         let proc_name = "P";
         let t_proc = TypeProc::new(None);
         let proc = BuilderDeclProc::new().set_name(proc_name, 1).build_decl();
-        let func = compile_decl(&mut table_proc, &proc)?;
+        let (func, _) = compile_decl(&mut table_proc, &proc)?;
         assert_eq!(func.name, proc_name);
         assert_eq!(table_proc.lookup(proc_name), Some(&t_proc));
         Ok(())

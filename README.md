@@ -1,5 +1,5 @@
 ```
-Module = "module" Identifier ";" { Declaration } "end" "."
-Declaration = Procedure ";"
-Procedure = "procedure" Identifier ";" "end"
+Module = "module" Id ";" { Decl } "end" "."
+Decl = Proc ";"
+Proc = "procedure" Id ["*"] ";" "end"
 ```

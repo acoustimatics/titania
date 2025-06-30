@@ -2,6 +2,9 @@ module TestProgram;
     procedure TestProc1;
     end;
 
-    procedure TestProc2;
+    procedure TestProc2*;
+    end;
+
+    procedure TestProc3;
     end;
 end.

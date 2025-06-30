@@ -6,7 +6,7 @@ use crate::error::*;
 use crate::scanner::*;
 
 // Result type for parsing functions.
-pub type ParseResult<T> = Result<T, Error>;
+pub type ResultParse<T> = Result<T, Error>;
 
 /// Holds the state of a parser.
 pub struct Parser<'a> {
@@ -26,22 +26,22 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a module.
-    pub fn module(&mut self) -> ParseResult<Module> {
-        let mut module_builder = BuilderModule::new();
+    pub fn module(&mut self) -> ResultParse<Module> {
+        let mut builder_module = BuilderModule::new();
 
         // "module"
         self.expect(TokenTag::Module)?;
 
-        // Identifier
+        // Id
         let (name, _) = self.expect_identifier()?;
-        module_builder.set_name(&name);
+        builder_module.set_name(&name);
 
         // ";"
         self.expect(TokenTag::Semicolon)?;
 
-        // { Declaration }
-        while let Some(declaration) = self.declaration()? {
-            module_builder.add_decl(declaration);
+        // { Decl }
+        while let Some(decl) = self.decl()? {
+            builder_module.add_decl(decl);
         }
 
         // "end"
@@ -53,32 +53,33 @@ impl<'a> Parser<'a> {
         // EOF
         self.expect(TokenTag::Eof)?;
 
-        Ok(module_builder.build())
+        Ok(builder_module.build())
     }
 
     /// Parses a declaration.
-    pub fn declaration(&mut self) -> ParseResult<Option<Decl>> {
-        let declaration = if self.is_match(TokenTag::Procedure)? {
-            // Procedure
-            let procedure = self.procedure()?;
+    pub fn decl(&mut self) -> ResultParse<Option<Decl>> {
+        let decl = if self.is_match(TokenTag::Procedure)? {
+            // Proc
+            let proc = self.proc()?;
 
             // ";"
             self.expect(TokenTag::Semicolon)?;
 
-            Some(procedure)
+            Some(Decl::Proc(proc))
         } else {
             None
         };
 
-        Ok(declaration)
+        Ok(decl)
     }
 
     /// Parses a procedure.
-    pub fn procedure(&mut self) -> ParseResult<Decl> {
+    pub fn proc(&mut self) -> ResultParse<DeclProc> {
         // "procedure" was previous token.
 
-        // Identifier
+        // Id ["*"]
         let (name, line) = self.expect_identifier()?;
+        let export = self.is_match(TokenTag::Star)?;
 
         // ";"
         self.expect(TokenTag::Semicolon)?;
@@ -86,13 +87,15 @@ impl<'a> Parser<'a> {
         // "end"
         self.expect(TokenTag::End)?;
 
-        let decl_proc = DeclProc { name, line };
-
-        Ok(Decl::Proc(decl_proc))
+        let decl = BuilderDeclProc::new()
+            .set_name(&name, line)
+            .set_export(export)
+            .build();
+        Ok(decl)
     }
 
     /// Make sure the current token has the given tag, or else generate an error.
-    fn expect(&mut self, expected: TokenTag) -> ParseResult<()> {
+    fn expect(&mut self, expected: TokenTag) -> ResultParse<()> {
         if self.current.tag == expected {
             self.advance()?;
             Ok(())
@@ -106,7 +109,7 @@ impl<'a> Parser<'a> {
 
     /// If the current token is an identifier, return the identifier name and
     /// line number. Otherwise, return an error.
-    fn expect_identifier(&mut self) -> ParseResult<(String, usize)> {
+    fn expect_identifier(&mut self) -> ResultParse<(String, usize)> {
         match &self.current {
             Token {
                 tag: TokenTag::Identifier(name),
@@ -125,7 +128,7 @@ impl<'a> Parser<'a> {
 
     /// If the current token matches the given tag, advance and return true.
     /// Otherwise, do nothing and return false.
-    fn is_match(&mut self, tag: TokenTag) -> ParseResult<bool> {
+    fn is_match(&mut self, tag: TokenTag) -> ResultParse<bool> {
         if self.current.tag == tag {
             self.advance()?;
             Ok(true)
@@ -135,13 +138,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Sets current token to the next token in the source text.
-    fn advance(&mut self) -> ParseResult<()> {
+    fn advance(&mut self) -> ResultParse<()> {
         self.current = self.scanner.next_token()?;
         Ok(())
     }
 
     /// Creates an error result for the current token.
-    fn err_current<T>(&self, tag: ErrorTag) -> ParseResult<T> {
+    fn err_current<T>(&self, tag: ErrorTag) -> ResultParse<T> {
         Err(Error::new(tag, self.current.line))
     }
 }
@@ -151,16 +154,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_empty_module() -> ParseResult<()> {
+    fn test_empty_module() -> ResultParse<()> {
         let mut parser = Parser::new("module M; end.")?;
         let module = parser.module()?;
         assert_eq!(module.name, "M");
+        assert_eq!(module.decls.len(), 0);
         assert!(is_at_eof(&parser));
         Ok(())
     }
 
     #[test]
-    fn test_module_procedure() -> ParseResult<()> {
+    fn test_module_procedure() -> ResultParse<()> {
         let mut parser = Parser::new("module M; procedure P; end; end.")?;
         let module = parser.module()?;
         assert_eq!(module.decls.len(), 1);
@@ -169,14 +173,21 @@ mod tests {
     }
 
     #[test]
-    fn test_declaration_empty_procedure() -> ParseResult<()> {
-        let mut parser = Parser::new("procedure P; end;")?;
-        match parser.declaration()? {
-            Some(Decl::Proc(decl_proc)) => {
-                assert_eq!(decl_proc.name, "P");
-            }
-            decl => panic!("Expected a procedure but got {decl:?}"),
-        }
+    fn test_procedure_empty() -> ResultParse<()> {
+        let mut parser = Parser::new("P; end")?;
+        let decl_proc = parser.proc()?;
+        assert_eq!(decl_proc.name, "P");
+        assert_eq!(decl_proc.export, false);
+        assert!(is_at_eof(&parser));
+        Ok(())
+    }
+
+    #[test]
+    fn test_procedure_export() -> ResultParse<()> {
+        let mut parser = Parser::new("P*; end")?;
+        let decl_proc = parser.proc()?;
+        assert_eq!(decl_proc.name, "P");
+        assert_eq!(decl_proc.export, true);
         assert!(is_at_eof(&parser));
         Ok(())
     }
