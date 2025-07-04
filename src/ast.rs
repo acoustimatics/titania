@@ -108,7 +108,12 @@ pub mod src {
                 let line = mem::replace(&mut self.line, 0);
                 let export = mem::replace(&mut self.export, false);
                 let tid_return = mem::replace(&mut self.tid_return, None);
-                DeclProc { name, line, export, tid_return }
+                DeclProc {
+                    name,
+                    line,
+                    export,
+                    tid_return,
+                }
             }
 
             pub fn build_decl(&mut self) -> Decl {
@@ -135,16 +140,62 @@ pub mod wat {
     }
 
     /// A WAT function.
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct Func {
         /// The function's name.
         pub name: String,
+
+        /// The function's result.
+        pub result: Option<Type>,
     }
 
     /// Represents an export S-expression.
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct Export {
         /// The export's name.
         pub name: String,
+    }
+
+    /// WAT types.
+    #[derive(Debug, PartialEq)]
+    pub enum Type {
+        /// The `i32` type.
+        I32,
+    }
+
+    pub mod builder {
+        use std::mem;
+
+        use super::*;
+
+        pub struct BuilderFunc {
+            name: String,
+            result: Option<Type>,
+        }
+
+        impl BuilderFunc {
+            pub fn new() -> Self {
+                Self {
+                    name: String::new(),
+                    result: None,
+                }
+            }
+
+            pub fn set_name(&mut self, name: &str) -> &mut Self {
+                self.name = name.to_owned();
+                self
+            }
+
+            pub fn set_result(&mut self, result: Option<Type>) -> &mut Self {
+                self.result = result;
+                self
+            }
+
+            pub fn build(&mut self) -> Func {
+                let name = mem::replace(&mut self.name, String::new());
+                let result = mem::replace(&mut self.result, None);
+                Func { name, result }
+            }
+        }
     }
 }

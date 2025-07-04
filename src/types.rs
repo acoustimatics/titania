@@ -6,7 +6,7 @@ use std::fmt;
 use std::rc::Rc;
 
 #[derive(Debug)]
-enum TypeTag {
+pub enum TypeTag {
     Int,
     Proc(TypeProc),
 }
@@ -40,6 +40,7 @@ impl TypeTag {
 }
 
 impl TypeProc {
+    /// Creates a procedure type.
     pub fn new(t_return: Option<Type>) -> Self {
         Self { t_return }
     }
@@ -60,6 +61,10 @@ impl Type {
 
     pub fn is_int(&self) -> bool {
         self.tag.is_int()
+    }
+
+    pub fn tag(&self) -> &TypeTag {
+        self.tag.as_ref()
     }
 }
 

@@ -1,5 +1,6 @@
 //! Titania compiler.
 
+use crate::ast::src::DeclProc;
 use crate::ast::{src, wat};
 use crate::error::*;
 use crate::table::Table;
@@ -10,6 +11,7 @@ pub type ResultCompile<T> = Result<T, Error>;
 
 /// Translates a Titania AST to a WAT AST.
 pub fn compile(module: &src::Module) -> ResultCompile<wat::Module> {
+    let mut table_type = create_default_type_table();
     let mut table_proc = Table::new();
 
     let name = module.name.clone();
@@ -17,7 +19,7 @@ pub fn compile(module: &src::Module) -> ResultCompile<wat::Module> {
     let mut exports = Vec::new();
 
     for decl in module.decls.iter() {
-        let (func, export) = compile_decl(&mut table_proc, &decl)?;
+        let (func, export) = compile_decl(&mut table_type, &mut table_proc, &decl)?;
         if let Some(export) = export {
             exports.push(export);
         }
@@ -32,15 +34,17 @@ pub fn compile(module: &src::Module) -> ResultCompile<wat::Module> {
 }
 
 fn compile_decl(
+    table_type: &Table<Type>,
     table_proc: &mut Table<TypeProc>,
-    decl: &src::Decl
+    decl: &src::Decl,
 ) -> ResultCompile<(wat::Func, Option<wat::Export>)> {
     match decl {
-        src::Decl::Proc(decl_proc) => compile_proc(table_proc, decl_proc),
+        src::Decl::Proc(decl_proc) => compile_proc(table_type, table_proc, decl_proc),
     }
 }
 
 fn compile_proc(
+    table_type: &Table<Type>,
     table_proc: &mut Table<TypeProc>,
     decl_proc: &src::DeclProc,
 ) -> ResultCompile<(wat::Func, Option<wat::Export>)> {
@@ -49,13 +53,32 @@ fn compile_proc(
         return Error::name_redefinition(&decl_proc.name, decl_proc.line);
     }
 
-    // Create an entry in the proc table.
-    let t_proc = TypeProc::new(None);
-    table_proc.push(&decl_proc.name, t_proc);
+    let mut builder = wat::builder::BuilderFunc::new();
+    builder.set_name(&decl_proc.name);
 
-    let func = wat::Func { name: decl_proc.name.clone() };
+    // Lookup return type, if any.
+    let t_return = match &decl_proc.tid_return {
+        Some(tid_return) => {
+            let Some(t_return) = table_type.lookup(tid_return) else {
+                unimplemented!()
+            };
+            Some(t_return.clone())
+        }
+        None => None,
+    };
+
+    // Get the WAT version of the return type.
+    let t_return_wat = to_type_wat(&t_return)?;
+    builder.set_result(t_return_wat);
+
+    // Log the proc's definition.
+    table_proc.push(&decl_proc.name, TypeProc::new(t_return));
+
+    let func = builder.build();
     let export = if decl_proc.export {
-        Some(wat::Export { name: decl_proc.name.clone() })
+        Some(wat::Export {
+            name: decl_proc.name.clone(),
+        })
     } else {
         None
     };
@@ -63,9 +86,30 @@ fn compile_proc(
     Ok((func, export))
 }
 
+/// Creates a type table with built-in types.
+fn create_default_type_table() -> Table<Type> {
+    let mut t = Table::new();
+    t.push("INTEGER", Type::new_int());
+    t
+}
+
+fn to_type_wat(t: &Option<Type>) -> ResultCompile<Option<wat::Type>> {
+    let Some(t) = t else {
+        return Ok(None);
+    };
+
+    let t_wat = match t.tag() {
+        TypeTag::Int => wat::Type::I32,
+        _ => unimplemented!(),
+    };
+
+    Ok(Some(t_wat))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast::src::builder::*;
+    use crate::ast::wat::builder::*;
     use crate::table::Table;
 
     use super::*;
@@ -131,13 +175,37 @@ mod tests {
 
     #[test]
     fn test_compile_proc() -> ResultTest {
+        let mut table_type = create_default_type_table();
         let mut table_proc = Table::new();
         let proc_name = "P";
         let t_proc = TypeProc::new(None);
         let proc = BuilderDeclProc::new().set_name(proc_name, 1).build_decl();
-        let (func, _) = compile_decl(&mut table_proc, &proc)?;
+        let (func, _) = compile_decl(&mut table_type, &mut table_proc, &proc)?;
         assert_eq!(func.name, proc_name);
         assert_eq!(table_proc.lookup(proc_name), Some(&t_proc));
+        Ok(())
+    }
+
+    #[test]
+    fn test_compile_proc_with_result_i32() -> ResultTest {
+        let proc_name = "P";
+        let proc = BuilderDeclProc::new()
+            .set_name(proc_name, 1)
+            .set_tid_return("INTEGER")
+            .build();
+        let func = BuilderFunc::new()
+            .set_name(proc_name)
+            .set_result(Some(wat::Type::I32))
+            .build();
+        let t_proc = TypeProc::new(Some(Type::new_int()));
+
+        let mut table_type = create_default_type_table();
+        let mut table_proc = Table::new();
+        let (func_compiled, _) = compile_proc(&mut table_type, &mut table_proc, &proc)?;
+
+        assert_eq!(func, func_compiled);
+        assert_eq!(table_proc.lookup(proc_name), Some(&t_proc));
+
         Ok(())
     }
 }
