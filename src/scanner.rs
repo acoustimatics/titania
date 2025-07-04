@@ -8,6 +8,9 @@ use crate::error::*;
 /// Represents a token's type in a source text.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenTag {
+    // A `:`.
+    Colon,
+
     // A `.`
     Dot,
 
@@ -38,6 +41,7 @@ impl fmt::Display for TokenTag {
         use TokenTag::*;
 
         let token_str = match self {
+            Colon => ":",
             Dot => ".",
             Eof => "EOF",
             End => "end",
@@ -177,6 +181,7 @@ impl<'a> Scanner<'a> {
 
         let tag = match self.current {
             None => Eof,
+            Some(':') => Colon,
             Some('.') => Dot,
             Some(';') => Semicolon,
             Some('*') => Star,
@@ -275,7 +280,8 @@ mod tests {
     fn test_next_token_symbol() -> Result<(), Error> {
         use TokenTag::*;
 
-        let mut scanner = Scanner::new(". ; *");
+        let mut scanner = Scanner::new(": . ; *");
+        assert_eq!(next_tag(&mut scanner)?, Colon);
         assert_eq!(next_tag(&mut scanner)?, Dot);
         assert_eq!(next_tag(&mut scanner)?, Semicolon);
         assert_eq!(next_tag(&mut scanner)?, Star);

@@ -75,11 +75,19 @@ impl<'a> Parser<'a> {
 
     /// Parses a procedure.
     pub fn proc(&mut self) -> ResultParse<DeclProc> {
+        let mut builder = BuilderDeclProc::new();
+
         // "procedure" was previous token.
 
         // Id ["*"]
         let (name, line) = self.expect_identifier()?;
         let export = self.is_match(TokenTag::Star)?;
+        builder.set_name(&name, line).set_export(export);
+
+        if self.is_match(TokenTag::Colon)? {
+            let (name, _) = self.expect_identifier()?;
+            builder.set_tid_return(&name);
+        }
 
         // ";"
         self.expect(TokenTag::Semicolon)?;
@@ -87,11 +95,7 @@ impl<'a> Parser<'a> {
         // "end"
         self.expect(TokenTag::End)?;
 
-        let decl = BuilderDeclProc::new()
-            .set_name(&name, line)
-            .set_export(export)
-            .build();
-        Ok(decl)
+        Ok(builder.build())
     }
 
     /// Make sure the current token has the given tag, or else generate an error.
@@ -178,6 +182,7 @@ mod tests {
         let decl_proc = parser.proc()?;
         assert_eq!(decl_proc.name, "P");
         assert_eq!(decl_proc.export, false);
+        assert_eq!(decl_proc.tid_return, None);
         assert!(is_at_eof(&parser));
         Ok(())
     }
@@ -188,6 +193,18 @@ mod tests {
         let decl_proc = parser.proc()?;
         assert_eq!(decl_proc.name, "P");
         assert_eq!(decl_proc.export, true);
+        assert_eq!(decl_proc.tid_return, None);
+        assert!(is_at_eof(&parser));
+        Ok(())
+    }
+
+    #[test]
+    fn test_procedure_integer_return() -> ResultParse<()> {
+        let mut parser = Parser::new("P*: integer; end")?;
+        let decl_proc = parser.proc()?;
+        assert_eq!(decl_proc.name, "P");
+        assert_eq!(decl_proc.export, true);
+        assert_eq!(decl_proc.tid_return, Some("integer".to_owned()));
         assert!(is_at_eof(&parser));
         Ok(())
     }

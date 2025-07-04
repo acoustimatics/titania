@@ -30,6 +30,9 @@ pub mod src {
 
         /// Whether the procedure is exported.
         pub export: bool,
+
+        /// Return type identifier.
+        pub tid_return: Option<String>,
     }
 
     pub mod builder {
@@ -68,9 +71,10 @@ pub mod src {
         }
 
         pub struct BuilderDeclProc {
-            pub name: String,
-            pub line: usize,
-            pub export: bool,
+            name: String,
+            line: usize,
+            export: bool,
+            tid_return: Option<String>,
         }
 
         impl BuilderDeclProc {
@@ -79,6 +83,7 @@ pub mod src {
                     name: String::new(),
                     line: 0,
                     export: false,
+                    tid_return: None,
                 }
             }
 
@@ -93,11 +98,17 @@ pub mod src {
                 self
             }
 
+            pub fn set_tid_return(&mut self, tid_return: &str) -> &mut Self {
+                self.tid_return = Some(tid_return.to_owned());
+                self
+            }
+
             pub fn build(&mut self) -> DeclProc {
                 let name = mem::replace(&mut self.name, String::new());
                 let line = mem::replace(&mut self.line, 0);
                 let export = mem::replace(&mut self.export, false);
-                DeclProc { name, line, export }
+                let tid_return = mem::replace(&mut self.tid_return, None);
+                DeclProc { name, line, export, tid_return }
             }
 
             pub fn build_decl(&mut self) -> Decl {
