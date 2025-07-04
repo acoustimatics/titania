@@ -1,10 +1,13 @@
-module TestProgram;
-    procedure TestProc1;
-    end;
+MODULE TestProgram;
+    PROCEDURE TestProc1;
+    END;
 
-    procedure TestProc2*;
-    end;
+    PROCEDURE TestProc2*;
+    END;
 
-    procedure TestProc3;
-    end;
-end.
+    PROCEDURE TestProc3;
+    END;
+
+    PROCEDURE TestProc4: INTEGER;
+    END;
+END.

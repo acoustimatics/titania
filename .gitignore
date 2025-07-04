@@ -1,6 +1,4 @@
 /target
-
-*.exe
-*.obj
-
-TestProgram.asm
+*.wat
+*.wasm
+Cargo.lock

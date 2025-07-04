@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_empty_module() -> ResultParse<()> {
-        let mut parser = Parser::new("module M; end.")?;
+        let mut parser = Parser::new("MODULE M; END.")?;
         let module = parser.module()?;
         assert_eq!(module.name, "M");
         assert_eq!(module.decls.len(), 0);
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_module_procedure() -> ResultParse<()> {
-        let mut parser = Parser::new("module M; procedure P; end; end.")?;
+        let mut parser = Parser::new("MODULE M; PROCEDURE P; END; END.")?;
         let module = parser.module()?;
         assert_eq!(module.decls.len(), 1);
         assert!(is_at_eof(&parser));
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_procedure_empty() -> ResultParse<()> {
-        let mut parser = Parser::new("P; end")?;
+        let mut parser = Parser::new("P; END")?;
         let decl_proc = parser.proc()?;
         assert_eq!(decl_proc.name, "P");
         assert_eq!(decl_proc.export, false);
@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_procedure_export() -> ResultParse<()> {
-        let mut parser = Parser::new("P*; end")?;
+        let mut parser = Parser::new("P*; END")?;
         let decl_proc = parser.proc()?;
         assert_eq!(decl_proc.name, "P");
         assert_eq!(decl_proc.export, true);
@@ -200,11 +200,11 @@ mod tests {
 
     #[test]
     fn test_procedure_integer_return() -> ResultParse<()> {
-        let mut parser = Parser::new("P*: integer; end")?;
+        let mut parser = Parser::new("P*: INTEGER; END")?;
         let decl_proc = parser.proc()?;
         assert_eq!(decl_proc.name, "P");
         assert_eq!(decl_proc.export, true);
-        assert_eq!(decl_proc.tid_return, Some("integer".to_owned()));
+        assert_eq!(decl_proc.tid_return, Some("INTEGER".to_owned()));
         assert!(is_at_eof(&parser));
         Ok(())
     }

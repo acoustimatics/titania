@@ -14,7 +14,7 @@ pub enum TokenTag {
     // A `.`
     Dot,
 
-    /// The `end` keyword.
+    /// The `END` keyword.
     End,
 
     /// Represents the end of the source text.
@@ -23,10 +23,10 @@ pub enum TokenTag {
     /// A sequence of letters or digits that is not a keyword.
     Identifier(String),
 
-    /// The `module` keyword.
+    /// The `MODULE` keyword.
     Module,
 
-    /// The `procedure` keyword.
+    /// The `PROCEDURE` keyword.
     Procedure,
 
     /// A `;`.
@@ -44,12 +44,12 @@ impl fmt::Display for TokenTag {
             Colon => ":",
             Dot => ".",
             Eof => "EOF",
-            End => "end",
+            End => "END",
             Identifier(id) => {
                 return write!(f, "identifier({id})");
             }
-            Module => "module",
-            Procedure => "procedure",
+            Module => "MODULE",
+            Procedure => "PROCEDURE",
             Semicolon => ";",
             Star => "*",
         };
@@ -164,9 +164,9 @@ impl<'a> Scanner<'a> {
         }
 
         let tag = match lexeme.as_ref() {
-            "end" => End,
-            "module" => Module,
-            "procedure" => Procedure,
+            "END" => End,
+            "MODULE" => Module,
+            "PROCEDURE" => Procedure,
             _ => Identifier(lexeme),
         };
 
@@ -268,7 +268,7 @@ mod tests {
     fn test_next_token_keywords() -> Result<(), Error> {
         use TokenTag::*;
 
-        let mut scanner = Scanner::new("end module procedure");
+        let mut scanner = Scanner::new("END MODULE PROCEDURE");
         assert_eq!(next_tag(&mut scanner)?, End);
         assert_eq!(next_tag(&mut scanner)?, Module);
         assert_eq!(next_tag(&mut scanner)?, Procedure);
