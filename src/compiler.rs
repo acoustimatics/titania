@@ -56,22 +56,13 @@ fn compile_proc(
     let mut builder = wat::builder::BuilderFunc::new();
     builder.set_name(&decl_proc.name);
 
-    // Lookup return type, if any.
-    let t_return = match &decl_proc.tid_return {
-        Some(tid_return) => {
-            let Some(t_return) = table_type.lookup(tid_return) else {
-                unimplemented!()
-            };
-            Some(t_return.clone())
-        }
-        None => None,
-    };
-
-    // Get the WAT version of the return type.
-    let t_return_wat = to_type_wat(&t_return)?;
+    let t_return = decl_proc
+        .tid_return
+        .as_ref()
+        .map(|tid| lookup_type(&table_type, &tid))
+        .transpose()?;
+    let t_return_wat = t_return.as_ref().map(to_type_wat).transpose()?;
     builder.set_result(t_return_wat);
-
-    // Log the proc's definition.
     table_proc.push(&decl_proc.name, TypeProc::new(t_return));
 
     let func = builder.build();
@@ -93,17 +84,20 @@ fn create_default_type_table() -> Table<Type> {
     t
 }
 
-fn to_type_wat(t: &Option<Type>) -> ResultCompile<Option<wat::Type>> {
-    let Some(t) = t else {
-        return Ok(None);
+/// Lookup type associated with an given identifier.
+fn lookup_type(table_type: &Table<Type>, tid: &str) -> ResultCompile<Type> {
+    let Some(t) = table_type.lookup(tid) else {
+        unimplemented!();
     };
+    Ok(t.clone())
+}
 
-    let t_wat = match t.tag() {
-        TypeTag::Int => wat::Type::I32,
+/// Convert a type to a WAT type.
+fn to_type_wat(t: &Type) -> ResultCompile<wat::Type> {
+    match t.tag() {
+        TypeTag::Int => Ok(wat::Type::I32),
         _ => unimplemented!(),
-    };
-
-    Ok(Some(t_wat))
+    }
 }
 
 #[cfg(test)]
