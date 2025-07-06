@@ -8,10 +8,13 @@ use crate::error::*;
 /// Represents a token's type in a source text.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenTag {
-    // A `:`.
+    /// The `BEGIN` keyword.
+    Begin,
+
+    /// A `:`.
     Colon,
 
-    // A `.`
+    /// A `.`
     Dot,
 
     /// The `END` keyword.
@@ -23,11 +26,17 @@ pub enum TokenTag {
     /// A sequence of letters or digits that is not a keyword.
     Identifier(String),
 
+    /// A sequence of digits.
+    Integer(String),
+
     /// The `MODULE` keyword.
     Module,
 
     /// The `PROCEDURE` keyword.
     Procedure,
+
+    /// The `RETURN` keyword.
+    Return,
 
     /// A `;`.
     Semicolon,
@@ -41,6 +50,7 @@ impl fmt::Display for TokenTag {
         use TokenTag::*;
 
         let token_str = match self {
+            Begin => "BEGIN",
             Colon => ":",
             Dot => ".",
             Eof => "EOF",
@@ -48,8 +58,12 @@ impl fmt::Display for TokenTag {
             Identifier(id) => {
                 return write!(f, "identifier({id})");
             }
+            Integer(n) => {
+                return write!(f, "integer({n})");
+            }
             Module => "MODULE",
             Procedure => "PROCEDURE",
+            Return => "Return",
             Semicolon => ";",
             Star => "*",
         };
@@ -111,6 +125,7 @@ impl<'a> Scanner<'a> {
 
         match self.current {
             Some(c) if is_alpha(c) => self.identifier(),
+            Some(c) if is_digit(c) => self.number(),
             _ => self.symbol(),
         }
     }
@@ -164,13 +179,33 @@ impl<'a> Scanner<'a> {
         }
 
         let tag = match lexeme.as_ref() {
+            "BEGIN" => Begin,
             "END" => End,
             "MODULE" => Module,
             "PROCEDURE" => Procedure,
+            "RETURN" => Return,
             _ => Identifier(lexeme),
         };
 
         Ok(Token::new(tag, line))
+    }
+
+    /// Scans a number token assuming that current is digit.
+    fn number(&mut self) -> Result<Token, Error> {
+        let line = self.line;
+
+        let mut lexeme = String::new();
+        loop {
+            match self.current {
+                Some(c) if is_digit(c) => {
+                    lexeme.push(c);
+                    self.advance();
+                }
+                _ => break,
+            }
+        }
+
+        Ok(Token::new(TokenTag::Integer(lexeme), line))
     }
 
     /// Scans a symbol token and end of file.
@@ -228,6 +263,10 @@ mod tests {
         TokenTag::Identifier(String::from(id))
     }
 
+    fn integer_tag(n: &str) -> TokenTag {
+        TokenTag::Integer(String::from(n))
+    }
+
     fn next_tag(scanner: &mut Scanner) -> Result<TokenTag, Error> {
         Ok(scanner.next_token()?.tag)
     }
@@ -265,13 +304,24 @@ mod tests {
     }
 
     #[test]
+    fn test_next_token() -> Result<(), Error> {
+        let mut scanner = Scanner::new("1 1234");
+        assert_eq!(next_tag(&mut scanner)?, integer_tag("1"));
+        assert_eq!(next_tag(&mut scanner)?, integer_tag("1234"));
+        assert_eq!(next_tag(&mut scanner)?, TokenTag::Eof);
+        Ok(())
+    }
+
+    #[test]
     fn test_next_token_keywords() -> Result<(), Error> {
         use TokenTag::*;
 
-        let mut scanner = Scanner::new("END MODULE PROCEDURE");
+        let mut scanner = Scanner::new("BEGIN END MODULE PROCEDURE RETURN");
+        assert_eq!(next_tag(&mut scanner)?, Begin);
         assert_eq!(next_tag(&mut scanner)?, End);
         assert_eq!(next_tag(&mut scanner)?, Module);
         assert_eq!(next_tag(&mut scanner)?, Procedure);
+        assert_eq!(next_tag(&mut scanner)?, Return);
         assert_eq!(next_tag(&mut scanner)?, Eof);
         Ok(())
     }
