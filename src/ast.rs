@@ -16,12 +16,12 @@ pub mod src {
     #[derive(Debug)]
     pub enum Decl {
         /// A procedure declaration.
-        Proc(DeclProc),
+        Proc(Proc),
     }
 
     /// A procedure declaration.
     #[derive(Debug)]
-    pub struct DeclProc {
+    pub struct Proc {
         /// The procedure's name.
         pub name: String,
 
@@ -70,14 +70,14 @@ pub mod src {
             }
         }
 
-        pub struct BuilderDeclProc {
+        pub struct BuilderProc {
             name: String,
             line: usize,
             export: bool,
             tid_return: Option<String>,
         }
 
-        impl BuilderDeclProc {
+        impl BuilderProc {
             pub fn new() -> Self {
                 Self {
                     name: String::new(),
@@ -103,12 +103,12 @@ pub mod src {
                 self
             }
 
-            pub fn build(&mut self) -> DeclProc {
+            pub fn build(&mut self) -> Proc {
                 let name = mem::replace(&mut self.name, String::new());
                 let line = mem::replace(&mut self.line, 0);
                 let export = mem::replace(&mut self.export, false);
                 let tid_return = mem::replace(&mut self.tid_return, None);
-                DeclProc {
+                Proc {
                     name,
                     line,
                     export,

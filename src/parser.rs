@@ -74,8 +74,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a procedure.
-    pub fn proc(&mut self) -> ResultParse<DeclProc> {
-        let mut builder = BuilderDeclProc::new();
+    pub fn proc(&mut self) -> ResultParse<Proc> {
+        let mut builder = BuilderProc::new();
 
         // "procedure" was previous token.
 

@@ -45,29 +45,29 @@ fn compile_decl(
 fn compile_proc(
     table_type: &Table<Type>,
     table_proc: &mut Table<TypeProc>,
-    decl_proc: &src::DeclProc,
+    proc: &src::Proc,
 ) -> ResultCompile<(wat::Func, Option<wat::Export>)> {
     // Make sure the proc name isn't being re-defined.
-    if let Some(_) = table_proc.lookup(&decl_proc.name) {
-        return Error::name_redefinition(&decl_proc.name, decl_proc.line);
+    if let Some(_) = table_proc.lookup(&proc.name) {
+        return Error::name_redefinition(&proc.name, proc.line);
     }
 
     let mut builder = wat::builder::BuilderFunc::new();
-    builder.set_name(&decl_proc.name);
+    builder.set_name(&proc.name);
 
-    let t_return = decl_proc
+    let t_return = proc
         .tid_return
         .as_ref()
         .map(|tid| lookup_type(&table_type, &tid))
         .transpose()?;
     let t_return_wat = t_return.as_ref().map(to_type_wat).transpose()?;
     builder.set_result(t_return_wat);
-    table_proc.push(&decl_proc.name, TypeProc::new(t_return));
+    table_proc.push(&proc.name, TypeProc::new(t_return));
 
     let func = builder.build();
-    let export = if decl_proc.export {
+    let export = if proc.export {
         Some(wat::Export {
-            name: decl_proc.name.clone(),
+            name: proc.name.clone(),
         })
     } else {
         None
@@ -124,7 +124,7 @@ mod tests {
         let proc_name = "P";
         let module = BuilderModule::new()
             .set_name(module_name)
-            .add_decl(BuilderDeclProc::new().set_name(proc_name, 1).build_decl())
+            .add_decl(BuilderProc::new().set_name(proc_name, 1).build_decl())
             .build();
         let module = compile(&module)?;
         assert_eq!(module.name, module_name);
@@ -137,7 +137,7 @@ mod tests {
         let module = BuilderModule::new()
             .set_name("M")
             .add_decl(
-                BuilderDeclProc::new()
+                BuilderProc::new()
                     .set_name("P", 1)
                     .set_export(true)
                     .build_decl(),
@@ -150,11 +150,11 @@ mod tests {
 
     #[test]
     fn test_compile_module_proc_name_redefinition() -> ResultTest {
-        let mut builder_decl_proc = BuilderDeclProc::new();
+        let mut builder_proc = BuilderProc::new();
         let module = BuilderModule::new()
             .set_name("M")
-            .add_decl(builder_decl_proc.set_name("P", 2).build_decl())
-            .add_decl(builder_decl_proc.set_name("P", 3).build_decl())
+            .add_decl(builder_proc.set_name("P", 2).build_decl())
+            .add_decl(builder_proc.set_name("P", 3).build_decl())
             .build();
         let compile_result = compile(&module);
         match compile_result {
@@ -172,7 +172,7 @@ mod tests {
         let mut table_proc = Table::new();
         let proc_name = "P";
         let t_proc = TypeProc::new(None);
-        let proc = BuilderDeclProc::new().set_name(proc_name, 1).build_decl();
+        let proc = BuilderProc::new().set_name(proc_name, 1).build_decl();
         let (func, _) = compile_decl(&mut table_type, &mut table_proc, &proc)?;
         assert_eq!(func.name, proc_name);
         assert_eq!(table_proc.lookup(proc_name), Some(&t_proc));
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn test_compile_proc_with_result_i32() -> ResultTest {
         let proc_name = "P";
-        let proc = BuilderDeclProc::new()
+        let proc = BuilderProc::new()
             .set_name(proc_name, 1)
             .set_tid_return("INTEGER")
             .build();
