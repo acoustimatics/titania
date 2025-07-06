@@ -95,7 +95,6 @@ fn lookup_type(table_type: &Table<Type>, tid: &str) -> ResultCompile<Type> {
 fn to_type_wat(t: &Type) -> ResultCompile<wat::Type> {
     match t.tag() {
         TypeTag::Int => Ok(wat::Type::I32),
-        _ => unimplemented!(),
     }
 }
 

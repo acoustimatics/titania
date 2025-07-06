@@ -21,17 +21,9 @@ impl<T> Table<T> {
         Self { items: Vec::new() }
     }
 
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
-
     pub fn push(&mut self, name: &str, value: T) {
         let symbol = Item::new(name, value);
         self.items.push(symbol);
-    }
-
-    pub fn pop(&mut self) {
-        self.items.pop().expect("symbol table underflow");
     }
 
     pub fn lookup(&self, name: &str) -> Option<&T> {
@@ -40,14 +32,5 @@ impl<T> Table<T> {
             .rev()
             .find(|item| item.name == name)
             .map(|item| &item.value)
-    }
-
-    pub fn lookup_offset(&self, name: &str) -> Option<usize> {
-        self.items
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, item)| item.name == name)
-            .map(|(offset, _)| offset)
     }
 }

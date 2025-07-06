@@ -8,7 +8,6 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum TypeTag {
     Int,
-    Proc(TypeProc),
 }
 
 /// Represents a procedure type.
@@ -23,22 +22,6 @@ pub struct Type {
     tag: Rc<TypeTag>,
 }
 
-impl TypeTag {
-    pub fn is_int(&self) -> bool {
-        match self {
-            TypeTag::Int => true,
-            _ => false,
-        }
-    }
-
-    pub fn as_proc(&self) -> Option<&TypeProc> {
-        match self {
-            TypeTag::Proc(t_proc) => Some(t_proc),
-            _ => None,
-        }
-    }
-}
-
 impl TypeProc {
     /// Creates a procedure type.
     pub fn new(t_return: Option<Type>) -> Self {
@@ -50,17 +33,6 @@ impl Type {
     pub fn new_int() -> Self {
         let tag = Rc::new(TypeTag::Int);
         Self { tag }
-    }
-
-    pub fn new_proc(t_return: Option<Type>) -> Self {
-        let t_proc = TypeProc { t_return };
-        let tag = TypeTag::Proc(t_proc);
-        let tag = Rc::new(tag);
-        Self { tag }
-    }
-
-    pub fn is_int(&self) -> bool {
-        self.tag.is_int()
     }
 
     pub fn tag(&self) -> &TypeTag {
@@ -79,7 +51,6 @@ impl fmt::Display for TypeTag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TypeTag::Int => write!(f, "int"),
-            TypeTag::Proc(proc) => write!(f, "{proc}"),
         }
     }
 }
@@ -106,8 +77,6 @@ impl PartialEq for TypeTag {
 
         match (self, other) {
             (Int, Int) => true,
-            (Proc(self_proc), Proc(other_proc)) => self_proc.eq(other_proc),
-            _ => false,
         }
     }
 }

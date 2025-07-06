@@ -116,6 +116,7 @@ pub mod src {
                 }
             }
 
+            #[cfg(test)]
             pub fn build_decl(&mut self) -> Decl {
                 let decl_proc = self.build();
                 Decl::Proc(decl_proc)
