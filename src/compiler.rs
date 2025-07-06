@@ -1,6 +1,5 @@
 //! Titania compiler.
 
-use crate::ast::src::DeclProc;
 use crate::ast::{src, wat};
 use crate::error::*;
 use crate::table::Table;
